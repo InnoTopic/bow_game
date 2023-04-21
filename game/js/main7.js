@@ -139,6 +139,7 @@ canvas.addEventListener("mouseup", (e) => {
   const finalMouseY = e.clientY - canvas.getBoundingClientRect().top;
   currentArrow.speedX = (initialMouseX - finalMouseX) / 4;
   currentArrow.speedY = (initialMouseY - finalMouseY) / 4;
+  beep(70, 10)
 
   arrows.push(currentArrow);
   currentArrow = { ...arrowTemplate };
@@ -178,7 +179,7 @@ const balloonTemplate = {
   y: 0,
   width: 50,
   height: 75,
-  color: "red"
+  color: "green"
 };
 
 const balloons = [];
@@ -200,11 +201,43 @@ function drawBalloons() {
   });
 }
 
+// Create a new AudioContext
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// Define a function to generate a beep sound
+function beep(frequency = 100, duration) {
+  // Create an oscillator node
+  const oscillator = audioCtx.createOscillator();
+  oscillator.type = "square";
+  oscillator.frequency.value = frequency;
+
+  // Create a gain node to control the volume
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = 0.5;
+
+  // Connect the nodes
+  oscillator.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  // Start the oscillator
+  oscillator.start();
+
+  // Stop the oscillator after the specified duration
+  setTimeout(function() {
+    oscillator.stop();
+  }, duration);
+}
+
+// Modify the checkCollision function to call the beep function when a balloon is popped
 function checkCollision(arrow, balloon) {
   const dx = arrow.x - balloon.x;
   const dy = arrow.y - balloon.y;
   const distance = Math.sqrt(dx * dx + dy * dy);
-  return distance < (balloon.width / 2 + arrow.width / 2);
+  if (distance < (balloon.width / 2 + arrow.width / 2)) {
+    beep(50, 30); // call the beep function with a duration of 50ms
+    return true;
+  }
+  return false;
 }
 
 function checkBlockCollision(arrow, block) {
@@ -216,12 +249,19 @@ function checkBlockCollision(arrow, block) {
   const top = block.y;
   const bottom = block.y + block.size;
 
-  return (
-    arrow.x + arrowHalfWidth > left &&
+  if (arrow.x + arrowHalfWidth > left &&
     arrow.x - arrowHalfWidth < right &&
     arrow.y + arrowHalfHeight > top &&
-    arrow.y - arrowHalfHeight < bottom
-  );
+    arrow.y - arrowHalfHeight < bottom) {
+    if ( arrow.speedX || arrow.speedY ) {
+      beep(200, 50); // call the beep function with a lower frequency (200Hz) and a duration of 50ms
+    }
+    arrow.speedX = 0;
+    arrow.speedY = 0;
+    return true;
+  }
+  return false;
 }
+
 
 gameLoop();
